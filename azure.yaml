@@ -5,12 +5,12 @@ metadata:
   template: todo-nodejs-mongo-aca@0.0.1-beta
 services:
   web:
-    project: src/web
-    module: modules/web
+    project: ./src/web
+    module: app/web
     language: js
     host: containerapp
   api:
-    project: src/api
-    module: modules/api
+    project: ./src/api
+    module: app/api
     language: js
     host: containerapp
