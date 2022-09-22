@@ -1,6 +1,39 @@
 {
     "version": "2.0.0",
     "tasks": [
+        
+        {
+            "label": "Start API",
+            "type": "dotenv",
+            "targetTasks": "API mvn spring-boot:run",
+            "file": "${input:dotEnvFilePath}"
+        },
+        {
+            "label": "API mvn spring-boot:run",
+            "detail": "Helper task--use 'Start API' task to ensure environment is set up correctly",
+            "type": "shell",
+            "command": "./mvnw spring-boot:run",
+            "options": {
+                "cwd": "${workspaceFolder}/src/api/"
+            },
+            "presentation": {
+                "panel": "dedicated",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build API",
+            "command": "./mvnw",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/src/api/"
+            },
+            "args": [
+                "package",
+                "-DskipTests"
+            ],
+            "problemMatcher": []
+        },
         {
             "label": "Start Web",
             "type": "dotenv",
@@ -29,41 +62,6 @@
                 "env": {
                     "REACT_APP_API_BASE_URL": "http://localhost:3100",
                     "BROWSER": "none"
-                }
-            },
-            "presentation": {
-                "panel": "dedicated",
-            },
-            "problemMatcher": []
-        },
-
-        {
-            "label": "Start API",
-            "type": "dotenv",
-            "targetTasks": [
-                "Restore API",
-                "API npm start"
-            ],
-            "file": "${input:dotEnvFilePath}"
-        },
-        {
-            "label": "Restore API",
-            "type": "shell",
-            "command": "azd restore --service api",
-            "presentation": {
-                "reveal": "silent"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "API npm start",
-            "detail": "Helper task--use 'Start API' task to ensure environment is set up correctly",
-            "type": "shell",
-            "command": "npm run start",
-            "options": {
-                "cwd": "${workspaceFolder}/src/api/",
-                "env": {
-                    "NODE_ENV": "development"
                 }
             },
             "presentation": {

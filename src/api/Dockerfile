@@ -1,10 +1,23 @@
-FROM node:16.13-alpine AS build
+FROM mcr.microsoft.com/openjdk/jdk:17-mariner AS build
 
-WORKDIR /app
+WORKDIR /workspace/app
+EXPOSE 3100
 
-COPY . .
+COPY mvnw .
+COPY .mvn .mvn
+COPY openapi.yaml openapi.yaml
+COPY pom.xml .
+COPY src src
+RUN touch .env
 
-RUN npm ci
-RUN npm run build
+RUN ./mvnw package -DskipTests
+RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
 
-CMD ["npm","run","start"]
+FROM mcr.microsoft.com/openjdk/jdk:17-mariner
+
+ARG DEPENDENCY=/workspace/app/target/dependency
+COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
+COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
+COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
+
+ENTRYPOINT ["java","-noverify", "-XX:MaxRAMPercentage=70", "-XX:+UseParallelGC", "-XX:ActiveProcessorCount=2", "-cp","app:app/lib/*","com.microsoft.azure.simpletodo.SimpleTodoApplication"]

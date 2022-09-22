@@ -1,8 +1,8 @@
-# ToDo Application with a Node.js API and Azure Cosmos DB API for MongoDB on Azure Container Apps
+# ToDo Application with a Java API and Azure Cosmos DB API for MongoDB on Azure Container Apps
 
-[![Open in Remote - Containers](https://img.shields.io/static/v1?label=Remote%20-%20Containers&message=Open&color=blue&logo=visualstudiocode)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/azure-samples/todo-nodejs-mongo-aca)
+[![Open in Remote - Containers](https://img.shields.io/static/v1?label=Remote%20-%20Containers&message=Open&color=blue&logo=visualstudiocode)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/azure-samples/todo-java-mongo-aca)
 
-A complete ToDo application that includes everything you need to build, deploy, and monitor an Azure solution. This application uses the Azure Developer CLI (azd) to get you up and running on Azure quickly, React.js for the Web application, Node.js for the API, Azure Cosmos DB API for MongoDB for storage, and Azure Monitor for monitoring and logging. It includes application code, tools, and pipelines that serve as a foundation from which you can build upon and customize when creating your own solutions.
+A complete ToDo application that includes everything you need to build, deploy, and monitor an Azure solution. This application uses the Azure Developer CLI (azd) to get you up and running on Azure quickly, React.js for the Web application, Java for the API, Azure Cosmos DB API for MongoDB for storage, and Azure Monitor for monitoring and logging. It includes application code, tools, and pipelines that serve as a foundation from which you can build upon and customize when creating your own solutions.
 
 Let's jump in and get the ToDo app up and running in Azure. When you are finished, you will have a fully functional web app deployed on Azure. In later steps, you'll see how to setup a pipeline and monitor the application.
 
@@ -24,7 +24,8 @@ The following prerequisites are required to use this application. Please ensure 
     curl -fsSL https://aka.ms/install-azd.sh | bash
     ```
 - [Azure CLI (2.38.0+)](https://docs.microsoft.com/cli/azure/install-azure-cli)
-- [Node.js with npm (16.13.1+)](https://nodejs.org/) - for API backend and Web frontend
+- [Java 17 or later](https://jdk.java.net/) - for API backend
+- [Node.js with npm (16.13.1+)](https://nodejs.org/) - for the Web frontend
 - [Docker](https://docs.docker.com/get-docker/)
 - [Git (2.36.1+)](https://git-scm.com/)
 
@@ -36,7 +37,7 @@ The fastest way for you to get this application up and running on Azure is to us
 1. Run the following command to initialize the project, provision Azure resources, and deploy the application code.
 
 ```bash
-azd up --template todo-nodejs-mongo-aca
+azd up --template todo-java-mongo-aca
 ```
 
 You will be prompted for the following information:
