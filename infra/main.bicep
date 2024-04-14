@@ -215,9 +215,18 @@ output SERVICE_API_ENDPOINTS array = useAPIM ? [ apimApi.outputs.SERVICE_API_URI
 
 // API bindings common
 output AZURE_RESOURCE_GROUP string = rg.name
+
+// Source resource API
 // output SERVICE_API_NAME string = api.outputs.SERVICE_API_NAME
+
+// Default Configuration Store
 output BINDING_STORE_NAME string = appConfig.outputs.name
+
+// Default KeyVault Secret Store
+output BINDING_SECRET_KEYVAULT string = keyVault.outputs.name
+
 // API to Cosmos bindings
 output BINDING_RESOURCE_COSMOSACCOUNT string = cosmos.outputs.accountName
+
 // API to AppInsights bindings
 output BINDING_RESOURCE_APPINSIGHT string = monitoring.outputs.applicationInsightsName
