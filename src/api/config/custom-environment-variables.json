@@ -1,6 +1,6 @@
 {
     "database": {
-        "connectionString": "AZURE_COSMOS_CONNECTION_STRING",
+        "connectionString": "AZURE_COSMOS_API2COSMOS_CONNECTIONSTRING",
         "databaseName": "AZURE_COSMOS_DATABASE_NAME"
     },
     "observability": {

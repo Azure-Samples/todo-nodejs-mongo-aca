@@ -38,3 +38,4 @@ module cosmos '../core/database/cosmos/mongo/cosmos-mongo-db.bicep' = {
 output connectionStringKey string = cosmos.outputs.connectionStringKey
 output databaseName string = cosmos.outputs.databaseName
 output endpoint string = cosmos.outputs.endpoint
+output accountName string = accountName

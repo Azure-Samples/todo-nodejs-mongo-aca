@@ -2,6 +2,7 @@ import { AppConfig, DatabaseConfig, ObservabilityConfig } from "./appConfig";
 import dotenv from "dotenv";
 import { DefaultAzureCredential } from "@azure/identity";
 import { SecretClient } from "@azure/keyvault-secrets";
+import { AppConfigurationClient } from "@azure/app-configuration";
 import { logger } from "../config/observability";
 import { IConfig } from "config";
 
@@ -11,9 +12,11 @@ export const getConfig: () => Promise<AppConfig> = async () => {
         dotenv.config();
     }
 
+    // TODO: Discuss if keep Keyvault or integrate into binding as infra when creating Connector
     await populateEnvironmentFromKeyVault();
+    await populateEnvironmentFromAppConfig();
 
-    // Load configuration after Azure KeyVault population is complete
+    // Load configuration after population is complete
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const config: IConfig = require("config") as IConfig;
     const databaseConfig = config.get<DatabaseConfig>("database");
@@ -43,6 +46,7 @@ const populateEnvironmentFromKeyVault = async () => {
     // If Azure key vault endpoint is defined
     // 1. Login with Default credential (managed identity or service principal)
     // 2. Overlay key vault secrets on top of ENV vars
+    const clientId = process.env.AZURE_CLIENT_ID;
     const keyVaultEndpoint = process.env.AZURE_KEY_VAULT_ENDPOINT || "";
 
     if (!keyVaultEndpoint) {
@@ -52,7 +56,10 @@ const populateEnvironmentFromKeyVault = async () => {
 
     try {
         logger.info("Populating environment from Azure KeyVault...");
-        const credential = new DefaultAzureCredential({});
+        const credential = new DefaultAzureCredential({
+            managedIdentityClientId: clientId
+
+        });
         const secretClient = new SecretClient(keyVaultEndpoint, credential);
 
         for await (const secretProperties of secretClient.listPropertiesOfSecrets()) {
@@ -66,6 +73,37 @@ const populateEnvironmentFromKeyVault = async () => {
     }
     catch (err: any) {
         logger.error(`Error authenticating with Azure KeyVault.  Ensure your managed identity or service principal has GET/LIST permissions. Error: ${err}`);
+        throw err;
+    }
+};
+
+const populateEnvironmentFromAppConfig = async () => {
+    // If Azure AppConfig endpoint is defined
+    // 1. Login with Default credential (managed identity or service principal)
+    // 2. Overlay App Config configurations on top of ENV vars
+    const clientId = process.env.AZURE_CLIENT_ID;
+    const azureAppConfigEndpoint = process.env.AZURE_APPCONFIGURATION_ENDPOINT || "";
+
+    if (!azureAppConfigEndpoint) {
+        logger.warn("AZURE_APPCONFIGURATION_ENDPOINT has not been set. Configuration will be loaded from current environment.");
+        return;
+    }
+
+    try {
+        logger.info("Populating environment from Azure AppConfiguration...");
+        const credential = new DefaultAzureCredential({
+            managedIdentityClientId: clientId
+        });
+
+        const appConfigClient = new AppConfigurationClient(azureAppConfigEndpoint, credential);
+
+        const settings = appConfigClient.listConfigurationSettings();
+        for await (const setting of settings) {
+            process.env[setting.key] = setting.value;
+        }
+    }
+    catch (err: any) {
+        logger.error(`Error authenticating with Azure App Configuration. Ensure your managed identity or service principal has GET/LIST permissions. Error: ${err}`);
         throw err;
     }
 };

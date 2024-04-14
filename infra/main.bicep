@@ -21,6 +21,7 @@ param containerRegistryName string = ''
 param cosmosAccountName string = ''
 param cosmosDatabaseName string = ''
 param keyVaultName string = ''
+param appConfigName string = ''
 param logAnalyticsName string = ''
 param resourceGroupName string = ''
 param webContainerAppName string = ''
@@ -103,11 +104,11 @@ module api './app/api.bicep' = {
     location: location
     tags: tags
     identityName: '${abbrs.managedIdentityUserAssignedIdentities}api-${resourceToken}'
-    applicationInsightsName: monitoring.outputs.applicationInsightsName
     containerAppsEnvironmentName: containerApps.outputs.environmentName
     containerRegistryName: containerApps.outputs.registryName
     containerRegistryHostSuffix: containerRegistryHostSuffix
     keyVaultName: keyVault.outputs.name
+    appConfigName: appConfig.outputs.name
     corsAcaUrl: corsAcaUrl
     exists: apiAppExists
   }
@@ -135,6 +136,17 @@ module keyVault './core/security/keyvault.bicep' = {
     location: location
     tags: tags
     principalId: principalId
+  }
+}
+
+// App Configuration infra for service connector bindings
+module appConfig './core/config/configstore.bicep' = {
+  name: 'appConfig'
+  scope: rg
+  params: {
+    name: !empty(appConfigName) ? appConfigName :'${abbrs.appConfigurationStores}${resourceToken}'
+    location: location
+    tags: tags
   }
 }
 
@@ -200,3 +212,12 @@ output SERVICE_API_NAME string = api.outputs.SERVICE_API_NAME
 output SERVICE_WEB_NAME string = web.outputs.SERVICE_WEB_NAME
 output USE_APIM bool = useAPIM
 output SERVICE_API_ENDPOINTS array = useAPIM ? [ apimApi.outputs.SERVICE_API_URI, api.outputs.SERVICE_API_URI ]: []
+
+// API bindings common
+output AZURE_RESOURCE_GROUP string = rg.name
+// output SERVICE_API_NAME string = api.outputs.SERVICE_API_NAME
+output BINDING_STORE_NAME string = appConfig.outputs.name
+// API to Cosmos bindings
+output BINDING_RESOURCE_COSMOSACCOUNT string = cosmos.outputs.accountName
+// API to AppInsights bindings
+output BINDING_RESOURCE_APPINSIGHT string = monitoring.outputs.applicationInsightsName

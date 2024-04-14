@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/houk-ms/azure-dev/bindings/schemas/alpha/azure.yaml.json
 
 name: todo-nodejs-mongo-aca
 metadata:
@@ -7,6 +7,7 @@ workflows:
   up: 
     steps:
       - azd: provision
+      - azd: binding api
       - azd: deploy --all
 services:
   web:
@@ -17,6 +18,14 @@ services:
     project: ./src/api
     language: js
     host: containerapp
+    bindings:
+      - name: api2cosmos
+        targetType: cosmos
+        targetResource: cosmosaccount
+      - name: api2appinsight
+        targetType: app-insights
+        targetResource: appinsight
+
 # using predeploy hook for web until
 # https://github.com/Azure/azure-dev/issues/3546 is fixed
 hooks:
@@ -28,7 +37,8 @@ hooks:
   predeploy:
     windows:
       shell: pwsh
-      run: 'echo "VITE_API_BASE_URL=\"$env:API_BASE_URL\"" > ./src/web/.env.local ; echo "VITE_APPLICATIONINSIGHTS_CONNECTION_STRING=\"$env:APPLICATIONINSIGHTS_CONNECTION_STRING\"" >> ./src/web/.env.local'
+      # BUG: the escape character \ is not working and still in the env.local file. So The env value is correct.
+      run: 'echo "VITE_API_BASE_URL=$env:API_BASE_URL" > ./src/web/.env.local ; echo "VITE_APPLICATIONINSIGHTS_CONNECTION_STRING=$env:APPLICATIONINSIGHTS_CONNECTION_STRING" >> ./src/web/.env.local'
     posix:
       shell: sh
       run: 'echo VITE_API_BASE_URL=\"$API_BASE_URL\" > ./src/web/.env.local && echo VITE_APPLICATIONINSIGHTS_CONNECTION_STRING=\"$APPLICATIONINSIGHTS_CONNECTION_STRING\" >> ./src/web/.env.local'    
