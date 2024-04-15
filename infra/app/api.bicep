@@ -56,12 +56,12 @@ module app '../core/host/container-app-upsert.bicep' = {
         value: apiIdentity.properties.clientId
       }
       {
-        name: 'AZURE_KEY_VAULT_ENDPOINT'
-        value: keyVault.properties.vaultUri
-      }
-      {
         name: 'AZURE_APPCONFIGURATION_ENDPOINT'
         value: appConfiguratoin.properties.endpoint
+      }
+      {
+        name: 'AZURE_KEY_VAULT_ENDPOINT'
+        value: keyVault.properties.vaultUri
       }
       {
         name: 'API_ALLOW_ORIGINS'
