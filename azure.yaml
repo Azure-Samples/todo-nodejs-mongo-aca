@@ -37,7 +37,8 @@ hooks:
   predeploy:
     windows:
       shell: pwsh
-      # BUG: the escape character \ is not working and still in the env.local file. So The env value is correct.
+      # BUG: the escape character \ is not working on windows, it stays in the env.local file so the env value is not correct
+      # Client-side bundle code would have wrong ENV value and the app on user browser not working. So the \ is removed for windows pwsh
       run: 'echo "VITE_API_BASE_URL=$env:API_BASE_URL" > ./src/web/.env.local ; echo "VITE_APPLICATIONINSIGHTS_CONNECTION_STRING=$env:APPLICATIONINSIGHTS_CONNECTION_STRING" >> ./src/web/.env.local'
     posix:
       shell: sh
