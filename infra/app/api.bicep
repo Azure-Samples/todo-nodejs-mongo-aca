@@ -57,7 +57,7 @@ module app '../core/host/container-app-upsert.bicep' = {
       }
       {
         name: 'AZURE_APPCONFIGURATION_ENDPOINT'
-        value: appConfiguratoin.properties.endpoint
+        value: appConfiguration.properties.endpoint
       }
       {
         name: 'AZURE_KEY_VAULT_ENDPOINT'
@@ -77,7 +77,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
   name: keyVaultName
 }
 
-resource appConfiguratoin 'Microsoft.AppConfiguration/configurationStores@2023-03-01' existing = {
+resource appConfiguration 'Microsoft.AppConfiguration/configurationStores@2023-03-01' existing = {
   name: appConfigName
 }
 

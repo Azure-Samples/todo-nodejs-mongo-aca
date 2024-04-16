@@ -23,7 +23,7 @@ services:
         targetType: cosmos
         targetResource: cosmosaccount
       - name: api2appinsight
-        targetType: app-insights
+        targetType: appinsights
         targetResource: appinsight
 
 # using predeploy hook for web until
