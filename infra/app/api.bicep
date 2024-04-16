@@ -30,7 +30,7 @@ module apiKeyVaultAccess '../core/security/keyvault-access.bicep' = {
 module appConfigurationAccess '../core/security/configstore-access.bicep' = {
   name: 'app-configuration-access'
   params: {
-    configStoreName: appConfiguratoin.name
+    configStoreName: appConfiguration.name
     principalId: apiIdentity.properties.principalId
   }
 }
