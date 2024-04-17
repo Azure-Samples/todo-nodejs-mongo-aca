@@ -81,8 +81,8 @@ module app 'container-app.bicep' = {
     name: name
     location: location
     tags: tags
-    identityType: identityType
-    identityName: identityName
+    identityType:'UserAssigned' // Enable system-assigned identity
+    identityName: identityName // Assign user-assigned identity
     ingressEnabled: ingressEnabled
     containerName: containerName
     containerAppsEnvironmentName: containerAppsEnvironmentName

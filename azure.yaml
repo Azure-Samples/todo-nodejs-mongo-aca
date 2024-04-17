@@ -22,9 +22,11 @@ services:
       - name: api2cosmos
         targetType: cosmos
         targetResource: cosmosaccount
+        keyvault: keyvault
       - name: api2appinsight
-        targetType: app-insights
+        targetType: appinsights
         targetResource: appinsight
+        # keyvault: keyvault
 
 # using predeploy hook for web until
 # https://github.com/Azure/azure-dev/issues/3546 is fixed
@@ -43,11 +45,11 @@ hooks:
     posix:
       shell: sh
       run: 'echo VITE_API_BASE_URL=\"$API_BASE_URL\" > ./src/web/.env.local && echo VITE_APPLICATIONINSIGHTS_CONNECTION_STRING=\"$APPLICATIONINSIGHTS_CONNECTION_STRING\" >> ./src/web/.env.local'    
-  postdeploy:
-    windows:
-      shell: pwsh
-      run: 'rm ./src/web/.env.local'
-    posix:
-      shell: sh
-      run: 'rm ./src/web/.env.local'
+  # postdeploy:
+  #   windows:
+  #     shell: pwsh
+  #     run: 'rm ./src/web/.env.local'
+  #   posix:
+  #     shell: sh
+  #     run: 'rm ./src/web/.env.local'
 

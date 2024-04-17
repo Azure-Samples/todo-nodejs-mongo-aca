@@ -1,7 +1,6 @@
 param name string
 param location string = resourceGroup().location
 param tags object = {}
-
 param identityName string
 param containerAppsEnvironmentName string
 param containerRegistryName string
@@ -60,21 +59,16 @@ module app '../core/host/container-app-upsert.bicep' = {
         value: appConfiguratoin.properties.endpoint
       }
       {
-        name: 'AZURE_KEY_VAULT_ENDPOINT'
-        value: keyVault.properties.vaultUri
-      }
-      {
         name: 'API_ALLOW_ORIGINS'
         value: corsAcaUrl
+      }
+      {
+        name: 'NODE_ENV'
+        value: 'production'
       }
     ]
     targetPort: 3100
   }
-}
-
-
-resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
-  name: keyVaultName
 }
 
 resource appConfiguratoin 'Microsoft.AppConfiguration/configurationStores@2023-03-01' existing = {

@@ -47,8 +47,8 @@ param webApiBaseUrl string = ''
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
-var apiContainerAppNameOrDefault = '${abbrs.appContainerApps}web-${resourceToken}'
-var corsAcaUrl = 'https://${apiContainerAppNameOrDefault}.${containerApps.outputs.defaultDomain}'
+var webContainerAppNameOrDefault = '${abbrs.appContainerApps}web-${resourceToken}'
+var corsAcaUrl = 'https://${webContainerAppNameOrDefault}.${containerApps.outputs.defaultDomain}'
 
 // Organize resources in a resource group
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -123,7 +123,6 @@ module cosmos './app/db.bicep' = {
     databaseName: cosmosDatabaseName
     location: location
     tags: tags
-    keyVaultName: keyVault.outputs.name
   }
 }
 
@@ -213,17 +212,14 @@ output SERVICE_WEB_NAME string = web.outputs.SERVICE_WEB_NAME
 output USE_APIM bool = useAPIM
 output SERVICE_API_ENDPOINTS array = useAPIM ? [ apimApi.outputs.SERVICE_API_URI, api.outputs.SERVICE_API_URI ]: []
 
-// API bindings common
-output AZURE_RESOURCE_GROUP string = rg.name
-
 // Source resource API
 // output SERVICE_API_NAME string = api.outputs.SERVICE_API_NAME
 
 // Default Configuration Store
-output BINDING_STORE_NAME string = appConfig.outputs.name
+output BINDING_APPCONFIG_NAME string = appConfig.outputs.name
 
 // Default KeyVault Secret Store
-output BINDING_SECRET_KEYVAULT string = keyVault.outputs.name
+output BINDING_KEYVAULT_NAME string = keyVault.outputs.name
 
 // API to Cosmos bindings
 output BINDING_RESOURCE_COSMOSACCOUNT string = cosmos.outputs.accountName
