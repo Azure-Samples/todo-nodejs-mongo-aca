@@ -29,7 +29,7 @@ module apiKeyVaultAccess '../core/security/keyvault-access.bicep' = {
 module appConfigurationAccess '../core/security/configstore-access.bicep' = {
   name: 'app-configuration-access'
   params: {
-    configStoreName: appConfiguratoin.name
+    configStoreName: appConfiguration.name
     principalId: apiIdentity.properties.principalId
   }
 }
@@ -56,7 +56,7 @@ module app '../core/host/container-app-upsert.bicep' = {
       }
       {
         name: 'AZURE_APPCONFIGURATION_ENDPOINT'
-        value: appConfiguratoin.properties.endpoint
+        value: appConfiguration.properties.endpoint
       }
       {
         name: 'API_ALLOW_ORIGINS'
@@ -71,7 +71,7 @@ module app '../core/host/container-app-upsert.bicep' = {
   }
 }
 
-resource appConfiguratoin 'Microsoft.AppConfiguration/configurationStores@2023-03-01' existing = {
+resource appConfiguration 'Microsoft.AppConfiguration/configurationStores@2023-03-01' existing = {
   name: appConfigName
 }
 
