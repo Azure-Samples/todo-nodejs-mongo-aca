@@ -99,7 +99,7 @@ module apiIdentity './core/security/user-assigned-managed-identity.bicep' = {
   scope: rg
   name: 'apiIdentity'
   params: {
-  identityName: '${abbrs.managedIdentityUserAssignedIdentities}web-${resourceToken}'
+  identityName: '${abbrs.managedIdentityUserAssignedIdentities}api-${resourceToken}'
   location: location
   tags: tags
   }
