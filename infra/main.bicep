@@ -95,6 +95,16 @@ module web './app/web.bicep' = {
   }
 }
 
+module apiIdentity './core/security/user-assigned-managed-identity.bicep' = {
+  scope: rg
+  name: 'apiIdentity'
+  params: {
+  identityName: '${abbrs.managedIdentityUserAssignedIdentities}web-${resourceToken}'
+  location: location
+  tags: tags
+  }
+}
+
 // Api backend
 module api './app/api.bicep' = {
   name: 'api'
@@ -134,7 +144,7 @@ module keyVault './core/security/keyvault.bicep' = {
     name: !empty(keyVaultName) ? keyVaultName : '${abbrs.keyVaultVaults}${resourceToken}'
     location: location
     tags: tags
-    principalId: principalId
+    principalId: apiIdentity.outputs.principalId
   }
 }
 
@@ -146,6 +156,7 @@ module appConfig './core/config/configstore.bicep' = {
     name: !empty(appConfigName) ? appConfigName :'${abbrs.appConfigurationStores}${resourceToken}'
     location: location
     tags: tags
+    principalId: apiIdentity.outputs.principalId
   }
 }
 

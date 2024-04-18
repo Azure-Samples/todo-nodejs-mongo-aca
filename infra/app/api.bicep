@@ -11,9 +11,12 @@ param serviceName string = 'api'
 param corsAcaUrl string
 param exists bool
 
-resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: identityName
-  location: location
+}
+
+resource appConfiguration 'Microsoft.AppConfiguration/configurationStores@2023-03-01' existing = {
+  name: appConfigName
 }
 
 // Give the API access to KeyVault
@@ -69,10 +72,6 @@ module app '../core/host/container-app-upsert.bicep' = {
     ]
     targetPort: 3100
   }
-}
-
-resource appConfiguration 'Microsoft.AppConfiguration/configurationStores@2023-03-01' existing = {
-  name: appConfigName
 }
 
 output SERVICE_API_IDENTITY_PRINCIPAL_ID string = apiIdentity.properties.principalId
