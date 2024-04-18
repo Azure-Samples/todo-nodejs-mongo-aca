@@ -1,20 +1,22 @@
 param name string
 param location string = resourceGroup().location
 param tags object = {}
-
 param identityName string
-param applicationInsightsName string
 param containerAppsEnvironmentName string
 param containerRegistryName string
 param containerRegistryHostSuffix string
 param keyVaultName string
+param appConfigName string
 param serviceName string = 'api'
 param corsAcaUrl string
 param exists bool
 
-resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+resource apiIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: identityName
-  location: location
+}
+
+resource appConfiguration 'Microsoft.AppConfiguration/configurationStores@2023-03-01' existing = {
+  name: appConfigName
 }
 
 // Give the API access to KeyVault
@@ -22,6 +24,15 @@ module apiKeyVaultAccess '../core/security/keyvault-access.bicep' = {
   name: 'api-keyvault-access'
   params: {
     keyVaultName: keyVaultName
+    principalId: apiIdentity.properties.principalId
+  }
+}
+
+// Give the API access to App Configuration. Role assignment after both created otherwise mutual dependency.
+module appConfigurationAccess '../core/security/configstore-access.bicep' = {
+  name: 'app-configuration-access'
+  params: {
+    configStoreName: appConfiguration.name
     principalId: apiIdentity.properties.principalId
   }
 }
@@ -47,28 +58,20 @@ module app '../core/host/container-app-upsert.bicep' = {
         value: apiIdentity.properties.clientId
       }
       {
-        name: 'AZURE_KEY_VAULT_ENDPOINT'
-        value: keyVault.properties.vaultUri
-      }
-      {
-        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-        value: applicationInsights.properties.ConnectionString
+        name: 'AZURE_APPCONFIGURATION_ENDPOINT'
+        value: appConfiguration.properties.endpoint
       }
       {
         name: 'API_ALLOW_ORIGINS'
         value: corsAcaUrl
       }
+      {
+        name: 'NODE_ENV'
+        value: 'production'
+      }
     ]
     targetPort: 3100
   }
-}
-
-resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing = {
-  name: applicationInsightsName
-}
-
-resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
-  name: keyVaultName
 }
 
 output SERVICE_API_IDENTITY_PRINCIPAL_ID string = apiIdentity.properties.principalId

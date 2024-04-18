@@ -21,6 +21,7 @@ param containerRegistryName string = ''
 param cosmosAccountName string = ''
 param cosmosDatabaseName string = ''
 param keyVaultName string = ''
+param appConfigName string = ''
 param logAnalyticsName string = ''
 param resourceGroupName string = ''
 param webContainerAppName string = ''
@@ -46,8 +47,8 @@ param webApiBaseUrl string = ''
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
-var apiContainerAppNameOrDefault = '${abbrs.appContainerApps}web-${resourceToken}'
-var corsAcaUrl = 'https://${apiContainerAppNameOrDefault}.${containerApps.outputs.defaultDomain}'
+var webContainerAppNameOrDefault = '${abbrs.appContainerApps}web-${resourceToken}'
+var corsAcaUrl = 'https://${webContainerAppNameOrDefault}.${containerApps.outputs.defaultDomain}'
 
 // Organize resources in a resource group
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -94,6 +95,16 @@ module web './app/web.bicep' = {
   }
 }
 
+module apiIdentity './core/security/user-assigned-managed-identity.bicep' = {
+  scope: rg
+  name: 'apiIdentity'
+  params: {
+  identityName: '${abbrs.managedIdentityUserAssignedIdentities}api-${resourceToken}'
+  location: location
+  tags: tags
+  }
+}
+
 // Api backend
 module api './app/api.bicep' = {
   name: 'api'
@@ -103,11 +114,11 @@ module api './app/api.bicep' = {
     location: location
     tags: tags
     identityName: '${abbrs.managedIdentityUserAssignedIdentities}api-${resourceToken}'
-    applicationInsightsName: monitoring.outputs.applicationInsightsName
     containerAppsEnvironmentName: containerApps.outputs.environmentName
     containerRegistryName: containerApps.outputs.registryName
     containerRegistryHostSuffix: containerRegistryHostSuffix
     keyVaultName: keyVault.outputs.name
+    appConfigName: appConfig.outputs.name
     corsAcaUrl: corsAcaUrl
     exists: apiAppExists
   }
@@ -122,7 +133,6 @@ module cosmos './app/db.bicep' = {
     databaseName: cosmosDatabaseName
     location: location
     tags: tags
-    keyVaultName: keyVault.outputs.name
   }
 }
 
@@ -134,7 +144,19 @@ module keyVault './core/security/keyvault.bicep' = {
     name: !empty(keyVaultName) ? keyVaultName : '${abbrs.keyVaultVaults}${resourceToken}'
     location: location
     tags: tags
-    principalId: principalId
+    principalId: apiIdentity.outputs.principalId
+  }
+}
+
+// App Configuration infra for service connector bindings
+module appConfig './core/config/configstore.bicep' = {
+  name: 'appConfig'
+  scope: rg
+  params: {
+    name: !empty(appConfigName) ? appConfigName :'${abbrs.appConfigurationStores}${resourceToken}'
+    location: location
+    tags: tags
+    principalId: apiIdentity.outputs.principalId
   }
 }
 
@@ -200,3 +222,18 @@ output SERVICE_API_NAME string = api.outputs.SERVICE_API_NAME
 output SERVICE_WEB_NAME string = web.outputs.SERVICE_WEB_NAME
 output USE_APIM bool = useAPIM
 output SERVICE_API_ENDPOINTS array = useAPIM ? [ apimApi.outputs.SERVICE_API_URI, api.outputs.SERVICE_API_URI ]: []
+
+// Source resource API
+// output SERVICE_API_NAME string = api.outputs.SERVICE_API_NAME
+
+// Default Configuration Store
+output BINDING_APPCONFIG_NAME string = appConfig.outputs.name
+
+// Default KeyVault Secret Store
+output BINDING_KEYVAULT_NAME string = keyVault.outputs.name
+
+// API to Cosmos bindings
+output BINDING_RESOURCE_COSMOSACCOUNT string = cosmos.outputs.accountName
+
+// API to AppInsights bindings
+output BINDING_RESOURCE_APPINSIGHT string = monitoring.outputs.applicationInsightsName

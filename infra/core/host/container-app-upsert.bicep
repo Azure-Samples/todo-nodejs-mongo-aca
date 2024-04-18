@@ -81,7 +81,7 @@ module app 'container-app.bicep' = {
     name: name
     location: location
     tags: tags
-    identityType: identityType
+    identityType:identityType
     identityName: identityName
     ingressEnabled: ingressEnabled
     containerName: containerName
