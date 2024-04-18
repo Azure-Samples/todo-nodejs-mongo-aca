@@ -1,8 +1,7 @@
 import { AppConfig, DatabaseConfig, ObservabilityConfig } from "./appConfig";
-import { AppConfigurationClient, ConfigurationSetting } from "@azure/app-configuration";
+import { load } from "@azure/app-configuration-provider";
 import dotenv from "dotenv";
-import { DefaultAzureCredential } from "@azure/identity";
-import { SecretClient } from "@azure/keyvault-secrets";
+import { getDefaultAzureCredential } from "@azure/identity";
 import { logger } from "../config/observability";
 import { IConfig } from "config";
 
@@ -13,8 +12,8 @@ export const getConfig: () => Promise<AppConfig> = async () => {
         await populateEnvironmentFromAppConfig();
     }
     else {
-        // Load any ENV vars from local src/api/.env file
-        // Prepare AZURE_COSMOS_API2COSMOS_CONNECTIONSTRING, AZURE_APPINSIGHTS_CONNECTIONSTRING for local development run
+        // For local dev/debug, load any ENV vars from local src/api/.env file
+        // Prepare AZURE_COSMOS_API2COSMOS_CONNECTIONSTRING, AZURE_APPINSIGHTS_CONNECTIONSTRING
         dotenv.config();
     }
     
@@ -43,79 +42,37 @@ export const getConfig: () => Promise<AppConfig> = async () => {
         },
     };
 };
+
 const populateEnvironmentFromAppConfig = async () => {
     // If Azure AppConfig endpoint is defined
     // 1. Login with Default credential (managed identity or service principal)
     // 2. Overlay App Config configurations on top of ENV vars (Read from KeyVault secret if is KeyVault references)
     const clientId = process.env.AZURE_CLIENT_ID;
-    const azureAppConfigEndpoint = process.env.AZURE_APPCONFIGURATION_ENDPOINT || "";
+    const endpoint = process.env.AZURE_APPCONFIGURATION_ENDPOINT || "";
 
-    if (!azureAppConfigEndpoint) {
+    if (!endpoint) {
         logger.warn("AZURE_APPCONFIGURATION_ENDPOINT has not been set. Configuration will be loaded from current environment.");
         return;
     }
 
     try {
         logger.info("Populating environment from Azure AppConfiguration...");
-        const credential = new DefaultAzureCredential({
-            managedIdentityClientId: clientId
+        const credential = getDefaultAzureCredential();
+
+        const settings = await load(endpoint, credential, {
+            keyVaultOptions: {
+                // Access keyvault using the same idenity, make sure the permission is set correctly.
+                credential: credential
+            }
         });
 
-        const appConfigClient = new AppConfigurationClient(azureAppConfigEndpoint, credential);
-
-        const settings = appConfigClient.listConfigurationSettings();
-        for await (const setting of settings) {
-            if (setting.value && isKeyVaultReference(setting)) {
-                const secretValue = await getSecretFromKeyVault(setting, credential);
-                process.env[setting.key] = secretValue;
-            } else if (setting.value) {
-                process.env[setting.key] = setting.value;
-            }
+        for (const [key, value] of settings) {
+            logger.info(`Setting read from app config ${key}=${value}`);
+            process.env[key] = value;
         }
     }
     catch (err: any) {
         logger.error(`Error authenticating with Azure App Configuration or Keyvault. Ensure your managed identity or service principal has GET/LIST permissions. Error: ${err}`);
         throw err;
     }
-};
-
-const isKeyVaultReference = (setting: ConfigurationSetting) => {
-    if (!setting.value) {
-        return false;
-    }
-    // Check if the setting value is a JSON string that contains a "uri" property
-    try {
-        const valueObject = JSON.parse(setting.value);
-        return valueObject && typeof valueObject.uri === "string";
-    } catch {
-        return false;
-    }
-};
-
-const getSecretFromKeyVault = async (setting: ConfigurationSetting, credential: DefaultAzureCredential) => {
-    if (!setting.value) {
-        throw new Error(`AppConfiguration setting ${setting.key} does not have a value`);
-    }
-
-    // Parse the setting value as JSON and extract the secretUri
-    const secretUriObject = JSON.parse(setting.value);
-    const secretUri = secretUriObject.uri;
-
-    if (!secretUri) {
-        throw new Error(`AppConfiguration setting ${setting.key} does not contain a valid Key Vault reference`);
-    }
-
-    // Extract the Key Vault name and secret name from the secretUri
-    const secretUriParts = secretUri.split("/");
-    const keyVaultName = secretUriParts[2];
-    const secretName = secretUriParts[4];
-
-    // Create a new SecretClient
-    const endpointUrl = `https://${keyVaultName}`;
-    const secretClient = new SecretClient(endpointUrl, credential);
-
-    // Get the secret
-    const secret = await secretClient.getSecret(secretName);
-
-    return secret.value;
 };
