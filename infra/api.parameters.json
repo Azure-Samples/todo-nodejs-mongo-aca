@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "containerRegistryName": {
+      "value": "${AZURE_CONTAINER_REGISTRY_NAME}"
+    },
+    "containerAppsEnvironmentName": {
+      "value": "${AZURE_CONTAINER_ENVIRONMENT_NAME}"
+    },
+    "imageName": {
+      "value": "${SERVICE_API_IMAGE_NAME}"
+    },
+    "identityId": {
+      "value": "${SERVICE_API_IDENTITY_ID}"
+    },
+    "identityClientId": {
+      "value": "${SERVICE_API_IDENTITY_CLIENT_ID}"
+    },
+    "applicationInsightsConnectionString": {
+      "value": "${APPLICATIONINSIGHTS_CONNECTION_STRING}"
+    },
+    "cosmosEndpoint": {
+      "value": "${AZURE_COSMOS_ENDPOINT}"
+    },
+    "cosmosDatabaseName": {
+      "value": "${AZURE_COSMOS_DATABASE_NAME}"
+    },
+    "keyvaultEndpoint": {
+      "value": "${AZURE_KEY_VAULT_ENDPOINT}"
+    },
+    "webUrl": {
+      "value": "${REACT_APP_WEB_BASE_URL}"
+    }
+  }
+}

@@ -13,19 +13,13 @@ param location string
 // "resourceGroupName": {
 //      "value": "myGroupName"
 // }
-param apiContainerAppName string = ''
 param applicationInsightsDashboardName string = ''
 param applicationInsightsName string = ''
-param containerAppsEnvironmentName string = ''
-param containerRegistryName string = ''
 param cosmosAccountName string = ''
 param keyVaultName string = ''
 param logAnalyticsName string = ''
 param resourceGroupName string = ''
-param webContainerAppName string = ''
 param apimServiceName string = ''
-param webAppExists bool = false
-param apiAppExists bool = false
 
 @description('Flag to use Azure API Management to mediate the calls between the Web frontend and the backend API')
 param useAPIM bool = false
@@ -39,7 +33,6 @@ param principalId string = ''
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
-var apiContainerAppNameOrDefault = '${abbrs.appContainerApps}api-${resourceToken}'
 
 // Organize resources in a resource group
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -62,58 +55,52 @@ module monitoring 'br/public:avm/ptn/azd/monitoring:0.1.0' = {
 }
 
 // Container apps host (including container registry)
-module containerApps 'br/public:avm/ptn/azd/container-apps-stack:0.1.0' = {
-  name: 'container-apps'
+module containerAppsEnvironment 'br/public:avm/res/app/managed-environment:0.4.5' = {
+  name: 'container-apps-environment'
   scope: rg
   params: {
-    containerAppsEnvironmentName: !empty(containerAppsEnvironmentName) ? containerAppsEnvironmentName : '${abbrs.appManagedEnvironments}${resourceToken}'
-    containerRegistryName: !empty(containerRegistryName) ? containerRegistryName : '${abbrs.containerRegistryRegistries}${resourceToken}'
     logAnalyticsWorkspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
-    appInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
-    acrSku: 'Basic'
+    name: '${abbrs.appManagedEnvironments}${resourceToken}'
     location: location
-    acrAdminUserEnabled: true
     zoneRedundant: false
+  }
+}
+
+// managed identity for ACR access
+module acrIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.2.1' = {
+  name: 'acrIdentity'
+  scope: rg
+  params: {
+    name: '${abbrs.managedIdentityUserAssignedIdentities}acr-${resourceToken}'
+    location: location
+  }
+}
+
+module containerRegistry 'br/public:avm/res/container-registry/registry:0.1.1' = {
+  name: 'registry'
+  scope: rg
+  params: {
+    name: '${abbrs.containerRegistryRegistries}${resourceToken}'
+    location: location
     tags: tags
+    publicNetworkAccess: 'Enabled'
+    roleAssignments:[
+      {
+        principalId: apiIdentity.outputs.principalId
+        principalType: 'ServicePrincipal'
+        roleDefinitionIdOrName: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+      }
+      {
+        principalId: webIdentity.outputs.principalId
+        principalType: 'ServicePrincipal'
+        roleDefinitionIdOrName: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+      }
+    ]
   }
 }
 
-var corsAcaUrl = 'https://${apiContainerAppNameOrDefault}.${containerApps.outputs.defaultDomain}'
-
-//the managed identity for web frontend
-module webIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.2.1' = {
-  name: 'webidentity'
-  scope: rg
-  params: {
-    name: '${abbrs.managedIdentityUserAssignedIdentities}web-${resourceToken}'
-    location: location
-  }
-}
-
-// Web frontend
-module web 'br/public:avm/ptn/azd/container-app-upsert:0.1.1' = {
-  name: 'web-container-app'
-  scope: rg
-  params: {
-    name: !empty(webContainerAppName) ? webContainerAppName : '${abbrs.appContainerApps}web-${resourceToken}'
-    tags: union(tags, { 'azd-service-name': 'web' })
-    location: location
-    containerAppsEnvironmentName: containerApps.outputs.environmentName
-    containerRegistryName: containerApps.outputs.registryName
-    ingressEnabled: true
-    identityType: 'UserAssigned'
-    exists: webAppExists
-    containerName: 'main'
-    identityName: webIdentity.name
-    userAssignedIdentityResourceId: webIdentity.outputs.resourceId
-    containerMinReplicas: 1
-    identityPrincipalId: webIdentity.outputs.principalId
-  }
-}
-
-//the managed identity for api backend
 module apiIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.2.1' = {
-  name: 'apiidentity'
+  name: 'apiIdentity'
   scope: rg
   params: {
     name: '${abbrs.managedIdentityUserAssignedIdentities}api-${resourceToken}'
@@ -121,53 +108,12 @@ module apiIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.
   }
 }
 
-// Api backend
-module api 'br/public:avm/ptn/azd/container-app-upsert:0.1.1' = {
-  name: 'api-container-app'
+module webIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.2.1' = {
+  name: 'webIdentity'
   scope: rg
   params: {
-    name: !empty(apiContainerAppName) ? apiContainerAppName : '${abbrs.appContainerApps}api-${resourceToken}'
-    tags: union(tags, { 'azd-service-name': 'api' })
+    name: '${abbrs.managedIdentityUserAssignedIdentities}web-${resourceToken}'
     location: location
-    env: [
-      {
-        name: 'AZURE_CLIENT_ID'
-        value: apiIdentity.outputs.clientId
-      }
-      {
-        name: 'AZURE_KEY_VAULT_ENDPOINT'
-        value: keyVault.outputs.uri
-      }
-      {
-        name: 'AZURE_COSMOS_ENDPOINT'
-        value: cosmos.outputs.endpoint
-      }
-      {
-        name: 'AZURE_COSMOS_DATABASE_NAME'
-        value: cosmos.outputs.databaseName
-      }
-      {
-        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-        value: monitoring.outputs.applicationInsightsConnectionString
-      }
-      {
-        name: 'API_ALLOW_ORIGINS'
-        value: corsAcaUrl
-      }
-    ]
-    containerAppsEnvironmentName: containerApps.outputs.environmentName
-    containerRegistryName: containerApps.outputs.registryName
-    exists: apiAppExists
-    identityType: 'UserAssigned'
-    identityName: apiIdentity.name
-    containerCpuCoreCount: '1.0'
-    containerMemory: '2.0Gi'
-    targetPort: 3100
-    containerMinReplicas: 1
-    ingressEnabled: true
-    containerName: 'main'
-    userAssignedIdentityResourceId: apiIdentity.outputs.resourceId
-    identityPrincipalId: apiIdentity.outputs.principalId
   }
 }
 
@@ -251,18 +197,22 @@ module apim 'br/public:avm/res/api-management/service:0.2.0' = if (useAPIM) {
   }
 }
 
+// The URLs for the services. Update to use custom domains if needed.
+var apiUrl = 'https://api.${containerAppsEnvironment.outputs.defaultDomain}'
+var webUrl = 'https://web.${containerAppsEnvironment.outputs.defaultDomain}'
+
 //Configures the API settings for an api app within the Azure API Management (APIM) service.
 module apimApi 'br/public:avm/ptn/azd/apim-api:0.1.0' = if (useAPIM) {
   name: 'apim-api-deployment'
   scope: rg
   params: {
-    apiBackendUrl: api.outputs.uri
+    apiBackendUrl: apiUrl
     apiDescription: 'This is a simple Todo API'
     apiDisplayName: 'Simple Todo API'
     apiName: 'todo-api'
     apiPath: 'todo'
     name: useAPIM ? apim.outputs.name : ''
-    webFrontendUrl: web.outputs.uri
+    webFrontendUrl: webUrl
     location: location
   }
 }
@@ -272,19 +222,19 @@ output AZURE_COSMOS_ENDPOINT string = cosmos.outputs.endpoint
 output AZURE_COSMOS_DATABASE_NAME string = cosmos.outputs.databaseName
 
 // App outputs
-output API_CORS_ACA_URL string = corsAcaUrl
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = monitoring.outputs.applicationInsightsConnectionString
 output APPLICATIONINSIGHTS_NAME string = monitoring.outputs.applicationInsightsName
-output AZURE_CONTAINER_ENVIRONMENT_NAME string = containerApps.outputs.environmentName
-output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerApps.outputs.registryLoginServer
-output AZURE_CONTAINER_REGISTRY_NAME string = containerApps.outputs.registryName
+output AZURE_CONTAINER_ENVIRONMENT_NAME string = containerAppsEnvironment.outputs.name
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.outputs.loginServer
+output AZURE_CONTAINER_REGISTRY_NAME string = containerRegistry.outputs.name
 output AZURE_KEY_VAULT_ENDPOINT string = keyVault.outputs.uri
 output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
-output API_BASE_URL string = useAPIM ? apimApi.outputs.serviceApiUri : api.outputs.uri
-output REACT_APP_WEB_BASE_URL string = web.outputs.uri
-output SERVICE_API_NAME string = api.outputs.name
-output SERVICE_WEB_NAME string = web.outputs.name
+output API_BASE_URL string = useAPIM ? apimApi.outputs.serviceApiUri : apiUrl
+output REACT_APP_WEB_BASE_URL string = webUrl
+output SERVICE_API_IDENTITY_ID string = apiIdentity.outputs.resourceId
+output SERVICE_API_IDENTITY_CLIENT_ID string = apiIdentity.outputs.clientId
+output SERVICE_WEB_IDENTITY_ID string = webIdentity.outputs.resourceId
 output USE_APIM bool = useAPIM
-output SERVICE_API_ENDPOINTS array = useAPIM ? [ apimApi.outputs.serviceApiUri, api.outputs.uri ] : []
+output SERVICE_API_ENDPOINTS array = useAPIM ? [ apimApi.outputs.serviceApiUri, apiUrl ] : []
